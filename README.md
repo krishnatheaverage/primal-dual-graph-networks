@@ -2,7 +2,7 @@
 
 Reference implementation and paper for **"Primal–Dual Graph Networks: Aligning
 Message Passing with Approximation Algorithms for Combinatorial Optimization on
-Graphs"** (Krishna Harish).
+Graphs"**.
 
 A PD-GNN is a message-passing network for NP-hard covering problems (running
 example: **minimum-weight vertex cover**) that carries a coupled **primal** state
