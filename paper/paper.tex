@@ -66,10 +66,10 @@ nodes. We then run the protocol on minimum-weight vertex cover over
 Erd\H{o}s--R\'enyi and Barab\'asi--Albert graphs, with exact integer optima from
 an ILP solver as ground truth. The learned dual head recovers a feasible dual
 within a few percent of the LP optimum, so the self-certificate is tight and, as
-guaranteed, always valid; we also report a negative finding---under the
+guaranteed, always valid; we also report a negative finding: under the
 size-normalized objective the primal scores collapse, so the integral cover is
-produced by the repair layer rather than learned---which we trace to the
-objective, not the architecture, and which leaves Theorem~\ref{thm:cert}
+produced by the repair layer rather than learned. We trace this to the
+objective, not the architecture, and it leaves Theorem~\ref{thm:cert}
 untouched. We close with the limitations of learned certificates and the main
 open questions.
 \end{abstract}
@@ -153,9 +153,9 @@ variable per vertex, a dual variable per edge, a packing constraint per vertex)
 and target NP-hard covering problems including vertex cover and set cover. Their
 headline contribution is to add \emph{optimal} solutions on small instances as
 supervision so the network \emph{outperforms} the approximation algorithm it
-imitates; their guarantee is therefore \emph{a-priori}---the architecture can
+imitates; their guarantee is therefore \emph{a-priori}: the architecture can
 exactly replicate the classical algorithm and so inherits its worst-case
-ratio---an expressivity statement about what the architecture can represent,
+ratio, an expressivity statement about what the architecture can represent,
 not a per-instance bound on what the trained network actually output.
 
 Unlike both, \PDGNN{} constrains the dual head to the LP-feasible region
@@ -232,7 +232,7 @@ increments on all edges in parallel each round and then restores feasibility, so
 $T$ is a small design parameter rather than the (typically large) number of
 single-edge updates the classical sequential algorithm performs. \PDGNN{} is a
 learnable surrogate for this $\Phi$ in which the per-round update is a neural
-module, while the feasibility structure---$y\in\Ycal$ and $S$ a cover---is
+module, while the feasibility structure ($y\in\Ycal$ and $S$ a cover) is
 enforced exactly by projection and rounding layers.
 
 \subsection{Notation for the learned model}
@@ -399,8 +399,8 @@ CO learners do not have this property. We stress that Theorem~\ref{thm:cert} doe
 \emph{not} say \PDGNN{} inherits the worst-case $2$-approximation of the
 template, because the learned modules can output any feasible pair. The only
 guarantee on solution quality is the a-posteriori certificate, whose value
-depends on training. This separation---a worst-case-free architecture with an
-always-valid bound---is exactly the property we verify empirically in
+depends on training. This separation, a worst-case-free architecture with an
+always-valid bound, is exactly the property we verify empirically in
 Section~\ref{sec:exp}.
 \end{remark}
 
@@ -520,15 +520,15 @@ places no reward on the primal scores, so $\mu^{(T)}$ collapses toward zero and
 the integral cover is produced entirely by the repair layer. The dual head still
 learns a near-LP-optimal feasible dual, so the certificate is meaningful, but the
 \emph{learned} content of the cover is lost. A natural fix is to add a primal
-term that rewards complementary-slackness-consistent coverage---for instance a
+term that rewards complementary-slackness-consistent coverage (for instance a
 hinge on $\sum_{(u,v)}\mathrm{ReLU}(1-\mu_u-\mu_v)$ or a supervised primal target
-on small instances---so that the learned primal is no longer vacuous; we leave a
+on small instances) so that the learned primal is no longer vacuous; we leave a
 careful study of this to future work. The generalization bound carries the usual
 factor exponential in $T$, which is probably loose, and tightening it with
 algorithm-specific stability arguments instead of generic covering numbers is the
-main open question. Finally, going beyond covering LPs---to packing problems, to
+main open question. Finally, going beyond covering LPs (to packing problems, to
 problems with exponentially many constraints handled by separation oracles, and
-to dualities that are not LP-based---would show how far the
+to dualities that are not LP-based) would show how far the
 architecture-as-algorithm idea reaches.
 
 \bibliographystyle{plainnat}
