@@ -195,12 +195,24 @@ class GNNPlain(nn.Module):
 # --------------------------------------------------------------------------- #
 # Losses
 # --------------------------------------------------------------------------- #
-def pdgnn_loss(mu, nu, b: Batch, beta=1.0):
-    """Eq. 10: mean over graphs of (1/n) sum_v w_v mu_v - (beta/n) sum_e y_e."""
+def pdgnn_loss(mu, nu, b: Batch, beta=1.0, gamma=0.0):
+    """Eq. 10 objective: mean over graphs of
+        (1/n)[ sum_v w_v mu_v - beta sum_e y_e + gamma sum_e relu(1 - mu_u - mu_v) ].
+
+    The coverage term is the penalty form of the LP constraint x_u + x_v >= 1 on
+    the soft scores: it pulls mu up so the primal learns a soft fractional cover
+    instead of collapsing to zero. It is 1/n-normalized and bounded O(Delta), so
+    it enters the generalization bound exactly like beta. With gamma=0 this is the
+    naive objective whose primal collapses (kept for the ablation)."""
     prim = _scatter_add(b.w * mu, b.node_graph, b.num_graphs)
-    dual = (_scatter_add(nu, b.edge_graph, b.num_graphs) if b.num_edges
-            else torch.zeros(b.num_graphs, device=b.w.device))
-    per_graph = (prim - beta * dual) / b.n_per_graph
+    if b.num_edges:
+        dual = _scatter_add(nu, b.edge_graph, b.num_graphs)
+        u, v = b.edge_index[0], b.edge_index[1]
+        viol = _scatter_add(torch.relu(1.0 - mu[u] - mu[v]), b.edge_graph, b.num_graphs)
+    else:
+        dual = torch.zeros(b.num_graphs, device=b.w.device)
+        viol = torch.zeros(b.num_graphs, device=b.w.device)
+    per_graph = (prim - beta * dual + gamma * viol) / b.n_per_graph
     return per_graph.mean()
 
 

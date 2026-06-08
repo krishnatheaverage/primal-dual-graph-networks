@@ -42,9 +42,13 @@ def evaluate_model(model, insts, opts, optlps, is_pdgnn: bool):
         cover = round_and_repair(mu, inst)
         assert is_feasible_cover(cover, inst)
         cost = cover_cost(cover, inst.weights)
+        # how much of the output cover came from thresholding mu (vs. added by repair):
+        # mu>=1/2 nodes are exactly the pre-repair cover, so this is |{mu>=1/2}| / |cover|.
+        mu_selected = int(np.sum(mu >= 0.5))
         row = {"n": inst.n, "m": inst.m, "cost": cost,
                "opt": float(opt), "optlp": float(optlp),
-               "mu_mean": float(np.mean(mu)), "mu_frac_ge_half": float(np.mean(mu >= 0.5))}
+               "mu_mean": float(np.mean(mu)), "mu_frac_ge_half": float(np.mean(mu >= 0.5)),
+               "frac_cover_from_mu": (mu_selected / len(cover)) if len(cover) else np.nan}
         row["emp_ratio"] = cost / opt if np.isfinite(opt) and opt > 0 else np.nan
         if is_pdgnn:
             viol = dual_feasibility_violation(nu, inst)

@@ -66,12 +66,13 @@ nodes. We then run the protocol on minimum-weight vertex cover over
 Erd\H{o}s--R\'enyi and Barab\'asi--Albert graphs, with exact integer optima from
 an ILP solver as ground truth. The learned dual head recovers a feasible dual
 within a few percent of the LP optimum, so the self-certificate is tight and, as
-guaranteed, always valid; we also report a negative finding: under the
-size-normalized objective the primal scores collapse, so the integral cover is
-produced by the repair layer rather than learned. We trace this to the
-objective, not the architecture, and it leaves Theorem~\ref{thm:cert}
-untouched. We close with the limitations of learned certificates and the main
-open questions.
+guaranteed, always valid. We also identify and fix a failure mode of the
+objective: without a coverage term the size-normalized loss gives the primal
+scores no incentive and they collapse, leaving the cover to a repair layer;
+adding the LP coverage constraint $x_u+x_v\ge1$ as a soft penalty makes the
+network learn a near-LP-optimal cover where the relaxation is tight, while
+keeping the dual near-optimal and the certificate always valid. We close with the
+limitations of learned certificates and the main open questions.
 \end{abstract}
 
 \section{Introduction}
@@ -125,7 +126,9 @@ uniform-convergence bound whose sample complexity depends on the number of
 message-passing rounds $T$ and the Lipschitz constants of the update modules,
 not on the number of nodes $n$ directly.
 \end{enumerate}
-Section~\ref{sec:exp} gives the protocol and real results, and
+Section~\ref{sec:exp} gives the protocol and real results, including an ablation
+showing that a soft coverage term in the objective is what turns the learned
+primal from a collapsed scorer into a near-LP-optimal cover, and
 Section~\ref{sec:conc} discusses limitations.
 
 \section{Related Work}\label{sec:rel}
@@ -345,22 +348,29 @@ certificate.}
 
 \subsection{Training objective}
 Given a distribution $\Dcal$ over instances $(G,w)$, we train $\theta$ to make
-the cover cheap and keep the dual large, which keeps the certificate tight. With
-a hyperparameter $\beta>0$ the per-instance loss is the size-normalized objective
+the cover cheap, keep the dual large, and keep the primal a valid cover. With
+hyperparameters $\beta,\gamma>0$ the per-instance loss is the size-normalized
+objective
 \begin{equation}
 \mathcal{L}_\theta(G,w)=\frac1n\underbrace{\sum_v w_v\,\mu_v^{(T)}}_{\text{soft primal cost}}
-   -\ \frac{\beta}{n}\underbrace{\sum_e \hat y_e}_{\text{dual value}}. \label{eq:loss}
+   \ -\ \frac{\beta}{n}\underbrace{\sum_e \hat y_e}_{\text{dual value}}
+   \ +\ \frac{\gamma}{n}\underbrace{\sum_{(u,v)\in E}\mathrm{ReLU}\!\bigl(1-\mu_u^{(T)}-\mu_v^{(T)}\bigr)}_{\text{soft coverage}}. \label{eq:loss}
 \end{equation}
-The $1/n$ normalization keeps the loss in a bounded range that does not grow with
-graph size, which we rely on in the generalization analysis of
-Section~\ref{sec:theory}. Both terms are differentiable in $\theta$: the dual
-term through the projection \eqref{eq:proj}, and the primal term through the soft
-scores $\mu_v^{(T)}$. The integral rounding $\rho$ is used only at evaluation, so
-no discrete-gradient estimator is needed. Feasibility of $\hat y$ and $\hat S$
-comes from the architecture, not the loss; the loss only controls quality. We
-return in Section~\ref{sec:exp} to a consequence of \eqref{eq:loss} we did not
-anticipate: it places no reward on the primal scores being large anywhere, so
-the soft scores collapse and the cover is determined by the repair pass.
+The three terms pull in the directions a primal--dual method needs: the cost term
+makes the cover cheap, the dual term keeps the certificate tight, and the
+coverage term is the penalty form of the LP constraint $x_u+x_v\ge1$ on the soft
+scores, which pulls $\mu$ up so the primal learns a fractional cover. The
+coverage term is essential, not cosmetic: with $\gamma=0$ the objective places no
+reward on the primal scores being large anywhere, so they collapse toward zero
+and the integral cover is produced entirely by the repair pass; with $\gamma>0$
+the cover becomes the network's own decision. We report this $\gamma=0$ versus
+$\gamma>0$ contrast as a controlled ablation in Section~\ref{sec:exp}. All three
+terms are $1/n$-normalized, so the loss stays in a bounded range that does not
+grow with graph size (used in Section~\ref{sec:theory}); the coverage and dual
+terms are each bounded $O(\Delta)$ and enter the generalization bound in the same
+way. The terms are differentiable in $\theta$, and the integral rounding $\rho$
+is used only at evaluation, so no discrete-gradient estimator is needed.
+Feasibility of $\hat y$ and $\hat S$ comes from the architecture, not the loss.
 
 \section{Theoretical Analysis}\label{sec:theory}
 We first record the safety property and then the generalization result.
@@ -407,8 +417,13 @@ Section~\ref{sec:exp}.
 \subsection{Primal--dual alignment and sample complexity}
 We now say what it means for the architecture to be aligned with the template
 $\Phi$, and show that alignment gives a generalization bound that does not depend
-on $n$ directly. Let $\Delta$ bound the maximum degree and $W$ bound the node
-weights, so instances lie in a class $\Ical_{\Delta,W}$.
+on $n$ directly. Let $\Delta$ bound the maximum degree, and let node weights lie
+in $[w_{\min},W]$ with $w_{\min}>0$, so instances lie in a class
+$\Ical_{\Delta,W,w_{\min}}$. The lower bound $w_{\min}>0$ is needed because the
+projection $\Pi_\Ycal$ divides by node loads, so with weights arbitrarily close to
+zero its Lipschitz constant is unbounded; under the Uniform$[0,1]$ weights of
+Section~\ref{sec:exp} one should read the bounds below with a small floor, or
+replace $w_{\min}$ by the smallest realized weight.
 
 \begin{definition}[$(T,L)$ primal--dual alignment]\label{def:align}
 A \PDGNN{} is $(T,L)$-\emph{aligned} with the primal--dual template if (i) it
@@ -423,8 +438,9 @@ learned.
 \begin{lemma}[State stability]\label{lem:stab}
 Under $(T,L)$-alignment with $L$-Lipschitz, $B$-bounded modules and degree bound
 $\Delta$, the map from parameters to the final node scores and edge duals is
-Lipschitz: there is a constant $\kappa(T,L,\Delta)\le C\,(L\Delta)^T$ for an
-absolute constant $C$, such that for parameter vectors $\theta,\theta'$,
+Lipschitz: there is a constant
+$\kappa(T,L,\Delta,w_{\min})\le C\,(L\Delta/w_{\min})^T$ for an absolute constant
+$C$, such that for parameter vectors $\theta,\theta'$,
 \[
 \bigl\|\mu^{(T)}(\theta)-\mu^{(T)}(\theta')\bigr\|_\infty\le\kappa\,\|\theta-\theta'\|
 \quad\text{and}\quad
@@ -434,36 +450,39 @@ absolute constant $C$, such that for parameter vectors $\theta,\theta'$,
 \begin{proof}[Proof sketch]
 Each round composes (a) the $L$-Lipschitz modules, (b) a sum of at most $\Delta$
 incident messages, which scales the Lipschitz constant by at most $\Delta$, and
-(c) the projection $\Pi_\Ycal$, which contributes a constant Lipschitz factor
-because it multiplies its inputs by scalars $\min_{v\in e}\lambda_v\in[0,1]$ that
-vary in a bounded, piecewise-smooth way with the loads. Composing $T$ such rounds
-multiplies the per-round constant $O(L\Delta)$, giving $\kappa=O((L\Delta)^T)$.
+(c) the projection $\Pi_\Ycal$, which contributes a Lipschitz factor
+$O(1/w_{\min})$ because it multiplies its inputs by scalars
+$\min_{v\in e}\lambda_v\in[0,1]$, and $\lambda_v=\min\{1,w_v/\ell_v\}$ has slope up
+to $1/w_v\le 1/w_{\min}$ in the loads. Composing $T$ such rounds multiplies the
+per-round constant $O(L\Delta/w_{\min})$, giving $\kappa=O((L\Delta/w_{\min})^T)$.
 The final sigmoid readout is $1$-Lipschitz, and boundedness keeps the constants
 finite.
 \end{proof}
 
 \begin{theorem}[Generalization under alignment]\label{thm:gen}
 Fix a $(T,L)$-aligned \PDGNN{} with parameters in a Euclidean ball of radius $R$
-and $P$ coordinates, weights bounded by $W$, and degree bounded by $\Delta$. The
+and $P$ coordinates, weights in $[w_{\min},W]$, and degree bounded by $\Delta$. The
 size-normalized loss \eqref{eq:loss} takes values in an interval of width
-$M=O(1+\beta\Delta)$. For a sample of $N$ i.i.d.\ instances from $\Dcal$, with
+$M=O(1+(\beta+\gamma)\Delta)$. For a sample of $N$ i.i.d.\ instances from $\Dcal$, with
 probability at least $1-\delta$, every parameter $\theta$ in the ball satisfies
 \[
 \mathbb{E}_{(G,w)\sim\Dcal}[\mathcal{L}_\theta]\ \le\
 \frac1N\sum_{i=1}^N\mathcal{L}_\theta(G_i,w_i)\ +\
 c\,M\sqrt{\frac{P\log\bigl(1+\kappa(T,L,\Delta)\,R\,N\bigr)+\log(1/\delta)}{N}},
 \]
-for an absolute constant $c$, where $\kappa(T,L,\Delta)=O((L\Delta)^T)$ is the
-Lipschitz constant of Lemma~\ref{lem:stab}.
+for an absolute constant $c$, where
+$\kappa(T,L,\Delta,w_{\min})=O((L\Delta/w_{\min})^T)$ is the Lipschitz constant of
+Lemma~\ref{lem:stab}.
 \end{theorem}
 \begin{proof}[Proof sketch]
 By Lemma~\ref{lem:stab} and the $1/n$ normalization in \eqref{eq:loss}, the loss
-is $O((W+\beta\Delta)\kappa)$-Lipschitz in $\theta$: the per-node average
+is $O((W+(\beta+\gamma)\Delta)\kappa)$-Lipschitz in $\theta$: the per-node average
 $\frac1n\sum_v w_v\mu_v$ has Lipschitz constant at most $W\kappa$ because the
-$1/n$ cancels the $n$ summed node terms, and the dual average contributes at most
-$O(\beta\Delta\kappa)$ since a bounded-degree graph has $O(n\Delta)$ edges. An
+$1/n$ cancels the $n$ summed node terms, and the dual and coverage averages each
+contribute at most $O((\beta+\gamma)\Delta\kappa)$ since a bounded-degree graph
+has $O(n\Delta)$ edges and the coverage hinge is $1$-Lipschitz in $\mu$. An
 $\epsilon$-net of the radius-$R$ ball in $\real^P$ induces an
-$O((W+\beta\Delta)\kappa\epsilon)$-cover of the induced function class, and the
+$O((W+(\beta+\gamma)\Delta)\kappa\epsilon)$-cover of the induced function class, and the
 net has size $(3R/\epsilon)^P$. A standard covering-number bound on the
 Rademacher complexity of this bounded, Lipschitz-parameterized class, followed by
 symmetrization, gives uniform convergence at rate
@@ -476,9 +495,10 @@ exponent of $\kappa$.
 \end{proof}
 
 \begin{corollary}[Size-independent learning for bounded-degree instances]\label{cor:size}
-On instance families with $\Delta=O(1)$ and fixed $\beta$, the sample complexity
-to reach excess risk $\epsilon$ is $\tilde O\!\bigl(P\,(T\log(L\Delta))/\epsilon^2\bigr)$,
-with no polynomial dependence on the number of nodes $n$.
+On instance families with $\Delta=O(1)$, $w_{\min}=\Omega(1)$, and fixed
+$\beta,\gamma$, the sample complexity to reach excess risk $\epsilon$ is
+$\tilde O\!\bigl(P\,(T\log(L\Delta/w_{\min}))/\epsilon^2\bigr)$, with no polynomial
+dependence on the number of nodes $n$.
 \end{corollary}
 
 \begin{remark}\label{rem:two}
@@ -486,7 +506,7 @@ Theorems~\ref{thm:cert} and~\ref{thm:gen} cover different things.
 Theorem~\ref{thm:cert} is about \emph{safety}: at any sample size the
 certificate is valid. Theorem~\ref{thm:gen} is about \emph{tightness}: with
 enough samples the certificate is, on average, as tight as the dual the
-optimizer can find. The factor $(L\Delta)^T$ is the usual cost of depth in bounds
+optimizer can find. The factor $(L\Delta/w_{\min})^T$ is the usual cost of depth in bounds
 of this kind, and it is a reason to keep $T$ no larger than the bounded-round
 scheme needs.
 \end{remark}
@@ -513,17 +533,22 @@ certificate, though never its validity, is fundamentally limited by the
 integrality gap of the relaxation: the tightest certificate any model can report
 is $\OPT/\OPTLP$, so on instances with a large gap even a perfect dual head gives
 a loose though valid bound. For set cover the gap is $\Theta(\log n)$, which caps
-the certificate at $O(\log n)$. Empirically (Section~\ref{sec:exp}) we found a
-sharper limitation that lies in the \emph{objective} rather than the
-architecture: the size-normalized loss \eqref{eq:loss} rewards a large dual but
-places no reward on the primal scores, so $\mu^{(T)}$ collapses toward zero and
-the integral cover is produced entirely by the repair layer. The dual head still
-learns a near-LP-optimal feasible dual, so the certificate is meaningful, but the
-\emph{learned} content of the cover is lost. A natural fix is to add a primal
-term that rewards complementary-slackness-consistent coverage (for instance a
-hinge on $\sum_{(u,v)}\mathrm{ReLU}(1-\mu_u-\mu_v)$ or a supervised primal target
-on small instances) so that the learned primal is no longer vacuous; we leave a
-careful study of this to future work. The generalization bound carries the usual
+the certificate at $O(\log n)$. A subtler limitation shows up in the primal once
+the objective is right. The coverage term of \eqref{eq:loss} fixes the collapse
+that the naive $\gamma=0$ objective produces (Section~\ref{sec:exp}): with
+$\gamma>0$ the network learns a soft fractional cover and the integral solution
+becomes its own decision rather than the repair layer's. But what it learns is
+essentially the LP relaxation, so the quality of the rounded cover tracks the LP
+integrality gap---near-optimal where the relaxation is tight, and loose, with
+high-variance threshold rounding, on families like dense Erd\H{o}s--R\'enyi where
+the LP is highly fractional, the same half-integrality that hurts LP rounding.
+Pushing the learned primal to be decisive (away from $\mu=\tfrac12$) so that it
+beats LP rounding on the hard half-integral instances too is open. We
+deliberately avoid a supervised primal target as the main fix, since learning
+from optimal solutions is exactly the lever a separate line of
+work~\citep{he2025primal} uses to surpass the algorithm, and an unsupervised,
+constraint-based primal is part of what distinguishes the certificate framing
+here. The generalization bound carries the usual
 factor exponential in $T$, which is probably loose, and tightening it with
 algorithm-specific stability arguments instead of generic covering numbers is the
 main open question. Finally, going beyond covering LPs (to packing problems, to

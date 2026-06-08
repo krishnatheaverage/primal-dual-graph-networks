@@ -16,6 +16,7 @@ class TrainConfig:
     d: int = 64
     T: int = 8
     beta: float = 1.0
+    gamma: float = 0.0   # soft-coverage penalty weight (0 = naive objective; collapses)
     lr: float = 1e-3
     batch_size: int = 32
     max_epochs: int = 150
@@ -31,12 +32,12 @@ class TrainResult:
     history: list = field(default_factory=list)
 
 
-def _val_loss(model, insts, kind, beta):
+def _val_loss(model, insts, kind, beta, gamma):
     with torch.no_grad():
         b = build_batch(insts)
         if kind == "pdgnn":
             mu, nu = model(b)
-            return float(pdgnn_loss(mu, nu, b, beta))
+            return float(pdgnn_loss(mu, nu, b, beta, gamma))
         mu = model(b)
         return float(plain_loss(mu, b))
 
@@ -62,14 +63,14 @@ def train_model(kind: str, train_insts: list[Instance], val_insts: list[Instance
             opt.zero_grad()
             if kind == "pdgnn":
                 mu, nu = model(b)
-                loss = pdgnn_loss(mu, nu, b, cfg.beta)
+                loss = pdgnn_loss(mu, nu, b, cfg.beta, cfg.gamma)
             else:
                 mu = model(b)
                 loss = plain_loss(mu, b)
             loss.backward()
             opt.step()
         model.eval()
-        vl = _val_loss(model, val_insts, kind, cfg.beta)
+        vl = _val_loss(model, val_insts, kind, cfg.beta, cfg.gamma)
         history.append(vl)
         if vl < best_val - 1e-6:
             best_val, best_state, best_epoch, wait = vl, copy.deepcopy(model.state_dict()), epoch, 0

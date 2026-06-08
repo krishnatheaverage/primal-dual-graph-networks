@@ -80,28 +80,35 @@ story is:
 1. **The certificate is always valid, and tight.** The projected dual is feasible
    on every instance (constraint violation `~0`), so Theorem 1 holds empirically.
    The learned dual head recovers a feasible dual within a few percent of the LP
-   optimum (`D(ŷ)/OPT_LP ≈ 0.98` on the training-size graphs), so the
-   self-certificate is non-vacuous.
-2. **The primal collapses — a finding about the objective, not the architecture.**
-   The size-normalized loss (Eq. 10) rewards a large dual but puts *no* reward on
-   the primal scores, so `μ → 0` and the integral cover is produced entirely by
-   the **repair pass** (which is itself a Bar-Yehuda–Even-style 2-approx, hence a
-   decent ~1.2 empirical ratio). PD-GNN and GNN-plain therefore get *identical*
-   solution quality; the dual head is the only learned-useful output. The paper
-   discusses the one-line fix (add a coverage/complementary-slackness primal term).
-3. **LP+Round is the weakest method here, not the strongest.** Vertex-cover LPs are
-   half-integral (Nemhauser–Trotter), so rounding all the `1/2`s up to `1` inflates
-   the cover well past Greedy on these sparse graphs. This contradicts the original
-   draft's placeholder ordering and is reported as-is.
-4. **The certificate extrapolates.** PD-GNN trained on `n ∈ [50,100]` keeps a
-   non-vacuous certificate on graphs up to `n = 1000`, in line with the
-   size-independent sample-complexity result.
+   optimum (`D(ŷ)/OPT_LP ≈ 0.94–0.99`), so the self-certificate is non-vacuous —
+   and it is robust to the primal (adding the coverage term below does not drag
+   the dual down).
+2. **The objective matters: a coverage term switches the primal on (the `γ`
+   ablation).** With `γ=0`, the size-normalized loss gives the primal scores no
+   incentive, so `μ → 0` and the cover is produced entirely by the **repair pass**
+   (a Bar-Yehuda–Even 2-approx; ~1.2 ratio). Adding the LP coverage constraint
+   `x_u+x_v ≥ 1` as a soft penalty (`γ=2`) flips the fraction of the cover decided
+   by `μ` from **~0% to ~100%** — the network now makes its own decision. What it
+   learns is essentially the LP relaxation, so its rounded quality **tracks the LP
+   integrality gap**: near-optimal where the LP is tight (ER `c=3`, BA `m=2`:
+   ~1.04, beating the `γ=0` baseline), and loose/high-variance on the dense,
+   half-integral ER `c=5` (the same effect that hurts LP+Round). Both `γ` settings
+   keep the certificate valid and tight.
+3. **LP+Round depends sharply on integrality.** It is the *worst* method on dense
+   ER `c=5` (half-integral LP) but near-optimal on ER `c=3` and BA. Reported as-is.
+4. **The certificate extrapolates.** The `γ=2` model trained on `n ∈ [50,100]`
+   keeps a non-vacuous certificate and a switched-on primal on graphs up to
+   `n = 1000`, in line with the size-independent sample-complexity result.
 
 These are real numbers from real runs; none were tuned to match the original
 draft's illustrative placeholders.
 
 ## Implementation notes (documented departures the paper leaves to the MLPs)
 
+- The objective (Eq. 10) carries a **soft-coverage penalty** `γ·Σ relu(1−μ_u−μ_v)/n`,
+  the penalty form of the LP constraint `x_u+x_v ≥ 1`. `γ=0` reproduces the
+  collapsing objective; we use `γ=2` (chosen by a sweep over `{1,2,3,5}`). Set it
+  with `--gamma`.
 - The nonnegative dual increment uses **softplus**, not a hard ReLU: a hard ReLU
   suffers dead-unit collapse on a fraction of seeds (the dual gets stuck at zero
   with no gradient to recover). Feasibility and Theorem 1 are unaffected.
