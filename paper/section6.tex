@@ -14,8 +14,8 @@ We run the protocol on minimum-weight vertex cover; exact integer optima from a 
 \toprule
 Method & Emp.\ ratio $\downarrow$ & Cert.\ ratio $\downarrow$ & \% cover from $\mu$ & Cert.? \\
 \midrule
-\Greedy   & $1.20 \pm 0.07$ & n/a & --- & no \\
-\LPRound  & $1.68 \pm 0.25$ & $1.77 \pm 0.28$ & --- & yes (LP dual) \\
+\Greedy   & $1.20 \pm 0.07$ & n/a & n/a & no \\
+\LPRound  & $1.68 \pm 0.25$ & $1.77 \pm 0.28$ & n/a & yes (LP dual) \\
 \GNNplain & $1.19 \pm 0.00$ & n/a & 0\% & no \\
 \midrule
 \PDGNN{} ($\gamma=0$) & $1.19 \pm 0.00$ & $1.27 \pm 0.04$ & 0\% & yes (self) \\
@@ -27,7 +27,7 @@ Method & Emp.\ ratio $\downarrow$ & Cert.\ ratio $\downarrow$ & \% cover from $\
 
 \paragraph{The certificate is always valid; the dual is near-optimal.} On every test instance the projected dual satisfied all node constraints (violation below $10^{-4}$), so Theorem~\ref{thm:cert} holds. The learned dual is strong and robust to the primal: dual quality $D(\hat y)/\OPTLP$ is $0.979$ at $\gamma=0$ and $0.991$ at $\gamma=2$ on this family, so adding the coverage term did not fight the dual down. \PDGNN{} is the only \emph{learned} method that reports a non-vacuous bound.
 
-\paragraph{The coverage term switches the primal on.} With $\gamma=0$ the objective gives $\mu$ no incentive: it collapses (mean $\mu^{(T)}$ below $0.01$), 0\% of the cover comes from $\mu$, and the integral solution is produced entirely by the repair pass (a Bar-Yehuda--Even $2$-approximation, which is why it still scores a reasonable $1.19$). With $\gamma=2$ the primal switches on---100\% of the cover is now the network's own $\mu\ge\tfrac12$ decision. This flip, from 0\% to 100\%, is the proof that the learned primal is doing the work.
+\paragraph{The coverage term switches the primal on.} With $\gamma=0$ the objective gives $\mu$ no incentive: it collapses (mean $\mu^{(T)}$ below $0.01$), 0\% of the cover comes from $\mu$, and the integral solution is produced entirely by the repair pass (a Bar-Yehuda--Even $2$-approximation, which is why it still scores a reasonable $1.19$). With $\gamma=2$ the primal switches on: 100\% of the cover is now the network's own $\mu\ge\tfrac12$ decision. This flip, from 0\% to 100\%, is the proof that the learned primal is doing the work.
 
 \paragraph{What the switched-on primal learns is the LP.} The coverage hinge is the penalty form of the LP constraint, so the network learns a soft fractional cover; its rounded quality then tracks the LP integrality gap. Where the relaxation is tight (Table~\ref{tab:family}) the $\gamma=2$ primal is near-optimal and \emph{beats} the $\gamma=0$ repair baseline (ER, $c=3$ $1.19\!\to\!1.06$; BA, $m=2$ $1.20\!\to\!1.02$; BA, $m=3$ $1.20\!\to\!1.15$); on the dense, half-integral $c=5$ family the soft cover sits near $\mu=\tfrac12$, so threshold rounding is loose and high-variance, the same half-integrality (Nemhauser--Trotter) that makes \LPRound{} loose there. In every family the certificate stays valid and the dual near-optimal ($D(\hat y)/\OPTLP\ge 0.94$).
 

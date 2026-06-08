@@ -80,8 +80,8 @@ def main():
     A(r"\toprule")
     A(r"Method & Emp.\ ratio $\downarrow$ & Cert.\ ratio $\downarrow$ & \% cover from $\mu$ & Cert.? \\")
     A(r"\midrule")
-    A(rf"\Greedy   & {pm(er5['greedy']['emp_mean'], er5['greedy']['emp_std'])} & n/a & --- & no \\")
-    A(rf"\LPRound  & {pm(er5['lp_round']['emp_mean'], er5['lp_round']['emp_std'])} & {pm(er5['lp_round']['cert_mean'], er5['lp_round']['cert_std'])} & --- & yes (LP dual) \\")
+    A(rf"\Greedy   & {pm(er5['greedy']['emp_mean'], er5['greedy']['emp_std'])} & n/a & n/a & no \\")
+    A(rf"\LPRound  & {pm(er5['lp_round']['emp_mean'], er5['lp_round']['emp_std'])} & {pm(er5['lp_round']['cert_mean'], er5['lp_round']['cert_std'])} & n/a & yes (LP dual) \\")
     A(rf"\GNNplain & {pm(er5['plain']['emp_mean'], er5['plain']['emp_std'])} & n/a & {pct(er5['plain']['frac_mu_mean'])} & no \\")
     A(r"\midrule")
     A(rf"\PDGNN{{}} ($\gamma=0$) & {pm(er5['pdgnn0']['emp_mean'], er5['pdgnn0']['emp_std'])} & {pm(er5['pdgnn0']['cert_mean'], er5['pdgnn0']['cert_std'])} & {pct(er5['pdgnn0']['frac_mu_mean'])} & yes (self) \\")
@@ -115,7 +115,7 @@ def main():
       rf" $\mu$, and the integral solution is produced entirely by the repair pass"
       rf" (a Bar-Yehuda--Even $2$-approximation, which is why it still scores a"
       rf" reasonable ${er5['pdgnn0']['emp_mean']:.2f}$). With $\gamma={g:g}$ the"
-      rf" primal switches on---{pct(er5['pdgnn']['frac_mu_mean'])} of the cover is"
+      rf" primal switches on: {pct(er5['pdgnn']['frac_mu_mean'])} of the cover is"
       rf" now the network's own $\mu\ge\tfrac12$ decision. This flip, from"
       rf" {pct(er5['pdgnn0']['frac_mu_mean'])} to"
       rf" {pct(er5['pdgnn']['frac_mu_mean'])}, is the proof that the learned primal"

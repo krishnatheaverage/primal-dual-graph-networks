@@ -10,7 +10,7 @@ example: **minimum-weight vertex cover**) that carries a coupled **primal** stat
 approximation algorithm. It outputs an integral cover **and** a *feasible*
 solution to the dual of the LP relaxation. Because any feasible dual lower-bounds
 the optimum (weak LP duality), the ratio `cost(cover) / value(dual)` is an
-**always-valid, instance-specific approximation certificate** — valid for every
+**always-valid, instance-specific approximation certificate**, valid for every
 input regardless of whether training succeeded (Theorem 1).
 
 The point is not better solutions; it is an **honest self-certificate** from a
@@ -80,7 +80,7 @@ story is:
 1. **The certificate is always valid, and tight.** The projected dual is feasible
    on every instance (constraint violation `~0`), so Theorem 1 holds empirically.
    The learned dual head recovers a feasible dual within a few percent of the LP
-   optimum (`D(ŷ)/OPT_LP ≈ 0.94–0.99`), so the self-certificate is non-vacuous —
+   optimum (`D(ŷ)/OPT_LP ≈ 0.94–0.99`), so the self-certificate is non-vacuous,
    and it is robust to the primal (adding the coverage term below does not drag
    the dual down).
 2. **The objective matters: a coverage term switches the primal on (the `γ`
@@ -88,7 +88,7 @@ story is:
    incentive, so `μ → 0` and the cover is produced entirely by the **repair pass**
    (a Bar-Yehuda–Even 2-approx; ~1.2 ratio). Adding the LP coverage constraint
    `x_u+x_v ≥ 1` as a soft penalty (`γ=2`) flips the fraction of the cover decided
-   by `μ` from **~0% to ~100%** — the network now makes its own decision. What it
+   by `μ` from **~0% to ~100%**: the network now makes its own decision. What it
    learns is essentially the LP relaxation, so its rounded quality **tracks the LP
    integrality gap**: near-optimal where the LP is tight (ER `c=3`, BA `m=2`:
    ~1.04, beating the `γ=0` baseline), and loose/high-variance on the dense,
